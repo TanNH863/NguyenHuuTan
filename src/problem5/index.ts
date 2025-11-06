@@ -100,12 +100,17 @@ app.get("/user/:id", async (req: Request, res: Response) => {
 
 // GET endpoint to retrieve all users
 app.get("/users", async (req: Request, res: Response) => {
+  const { role } = req.query;
   try {
-    const result = await pool.query(
-      `SELECT id, email, full_name, role, created_at FROM users`
-    );
+    const query = role
+      ? `SELECT id, email, full_name, role, created_at FROM users WHERE role = $1`
+      : `SELECT id, email, full_name, role, created_at FROM users`;
+    const values = role ? [role] : [];
+    const result = await pool.query(query, values);
     res.json({
-      message: "Users retrieved successfully!",
+      message: role
+        ? `Users with role ${role} retrieved successfully!`
+        : "Users retrieved successfully!",
       users: result.rows,
     });
   } catch (err) {
