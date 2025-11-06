@@ -1,6 +1,8 @@
 import express, { type Express, type Request, type Response } from "express";
 import dotenv from "dotenv";
 import { Pool } from "pg";
+import * as bcrypt from "bcrypt";
+import { v4 as uuidv4 } from "uuid";
 
 dotenv.config();
 
@@ -45,6 +47,56 @@ app.get("/db-test", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Error executing query", err);
     res.status(500).send("Error querying database");
+  }
+});
+
+app.post(
+  "/user/create",
+  express.json(),
+  async (req: Request, res: Response) => {
+    const { email, password, full_name, role } = req.body;
+    try {
+      const saltRounds = 10;
+      const password_hash = await bcrypt.hash(password, saltRounds);
+      const id = uuidv4();
+      const created_at = new Date();
+
+      const result = await pool.query(
+        `INSERT INTO users (id, email, password_hash, full_name, role, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [id, email, password_hash, full_name, role, created_at]
+      );
+
+      res.json({
+        message: "User created successfully!",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      console.error("Error creating user", err);
+      res.status(500).send("Error creating user");
+    }
+  }
+);
+
+app.delete("/user/delete/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `DELETE FROM users WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    if (result.rowCount === 0) {
+      res.status(404).send("User not found");
+      return;
+    }
+    res.json({
+      message: "User deleted successfully!",
+      user: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Error deleting user", err);
+    res.status(500).send("Error deleting user");
   }
 });
 
