@@ -100,17 +100,23 @@ app.get("/user/:id", async (req: Request, res: Response) => {
 
 // GET endpoint to retrieve all users
 app.get("/users", async (req: Request, res: Response) => {
-  const { role } = req.query;
+  const { role, sort } = req.query;
   try {
+    // Default sort order: descending
+    const sortOrder =
+      sort && typeof sort === "string" && sort.toLowerCase() === "asc"
+        ? "ASC"
+        : "DESC";
+
     const query = role
-      ? `SELECT id, email, full_name, role, created_at FROM users WHERE role = $1`
-      : `SELECT id, email, full_name, role, created_at FROM users`;
+      ? `SELECT id, email, full_name, role, created_at FROM users WHERE role = $1 ORDER BY created_at ${sortOrder}`
+      : `SELECT id, email, full_name, role, created_at FROM users ORDER BY created_at ${sortOrder}`;
     const values = role ? [role] : [];
     const result = await pool.query(query, values);
     res.json({
       message: role
-        ? `Users with role ${role} retrieved successfully!`
-        : "Users retrieved successfully!",
+        ? `Users with role ${role} retrieved successfully in ${sortOrder} order!`
+        : `Users retrieved successfully in ${sortOrder} order!`,
       users: result.rows,
     });
   } catch (err) {
